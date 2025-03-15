@@ -62,7 +62,7 @@ export const GameCanvas = {
     
     // Animation particles system
     const particles = [];
-    const MAX_PARTICLES = 50;
+    const MAX_PARTICLES = 15; // Reduced from 50
     
     // Add these variables near the top with other game variables
     let powerups = [];
@@ -70,7 +70,7 @@ export const GameCanvas = {
     let comboCount = 0;
     let comboTimer = 0;
     let dayNightCycle = 0; // 0 to 1 representing time of day
-    let dayNightSpeed = 0.0001; // How fast day/night cycles
+    let dayNightSpeed = 0.00002; // Reduced from 0.0001
     let specialAbilityActive = false;
     let specialAbilityTimer = 0;
     let specialAbilityType = null;
@@ -130,7 +130,7 @@ export const GameCanvas = {
             x: Math.random() * canvas.width,
             y: Math.random() * (canvas.height * 0.5),
             width: Math.random() * 100 + 50,
-            speed: Math.random() * 0.5 + 0.1
+            speed: Math.random() * 0.2 + 0.05 // Reduced from 0.5 + 0.1
           });
         }
       }
@@ -148,7 +148,7 @@ export const GameCanvas = {
             cloud.x = -cloud.width;
             cloud.y = Math.random() * (canvas.height * 0.5);
             cloud.width = Math.random() * 100 + 50;
-            cloud.speed = Math.random() * 0.5 + 0.1;
+            cloud.speed = Math.random() * 0.2 + 0.05; // Reduced from 0.5 + 0.1
           }
         }
         
@@ -204,7 +204,7 @@ export const GameCanvas = {
       // Determine bob amount based on whether cat is jumping
       let bobAmount = 0;
       if (!isJumping) {
-        bobAmount = Math.sin(elapsedTime * 0.003) * 3;
+        bobAmount = Math.sin(elapsedTime * 0.002) * 2; // Reduced frequency and amplitude
       }
       
       // Cat body
@@ -396,7 +396,7 @@ export const GameCanvas = {
         catVelX = MOVE_SPEED;
       } else {
         // Apply friction/deceleration when not pressing movement keys
-        catVelX *= 0.8;
+        catVelX *= 0.9; // Increased from 0.8 for smoother deceleration
         if (Math.abs(catVelX) < 0.1) catVelX = 0;
       }
       
@@ -411,7 +411,7 @@ export const GameCanvas = {
       if (isJumping) {
         const oldY = catY;
         catY -= jumpForce;
-        jumpForce -= gravity;
+        jumpForce -= gravity * 0.8; // Reduced gravity effect for smoother jumps
         
         
         // Check if landed
@@ -504,7 +504,7 @@ export const GameCanvas = {
           
           // Increase game speed gradually as score increases
           if (isPlaying) {
-              gameSpeed = 5 + Math.floor((score / 5) / 10);
+              gameSpeed = 5 + Math.floor((score / 10) / 10); // More gradual increase
           }
       }
       
@@ -1003,8 +1003,8 @@ export const GameCanvas = {
         }
         
       } else if (obstacle.type === 'bird') {
-        // Draw bird
-        ctx.fillStyle = '#FF8A65'; // Orange bird
+        // Draw bird with grey colors
+        ctx.fillStyle = '#9E9E9E'; // Medium grey body
         
         // Bird body
         ctx.beginPath();
@@ -1025,7 +1025,8 @@ export const GameCanvas = {
           obstacle.y : 
           obstacle.y + obstacle.height * 0.2;
         
-        // Draw wings
+        // Draw wings with a darker grey
+        ctx.fillStyle = '#616161'; // Darker grey wings
         ctx.beginPath();
         ctx.ellipse(
           obstacle.x + obstacle.width/2, 
@@ -1037,7 +1038,7 @@ export const GameCanvas = {
         ctx.fill();
         
         // Draw beak
-        ctx.fillStyle = '#FFC107'; // Yellow beak
+        ctx.fillStyle = '#FFC107'; // Keep yellow beak
         ctx.beginPath();
         ctx.moveTo(obstacle.x + obstacle.width * 0.8, obstacle.y + obstacle.height * 0.4);
         ctx.lineTo(obstacle.x + obstacle.width * 1.2, obstacle.y + obstacle.height * 0.5);
@@ -1245,7 +1246,7 @@ export const GameCanvas = {
         width,
         height,
         speed: type === 'cloud' ? 
-               Math.random() * 0.5 + 0.2 : 
+               Math.random() * 0.2 + 0.05 : 
                0.5 + (Math.random() * 0.3)
       };
     }
@@ -1253,15 +1254,15 @@ export const GameCanvas = {
     // Update and draw background elements
     function updateBackgroundElements(deltaTime) {
         if (!isPaused && isPlaying) {
-            // Add new background elements occasionally
-            if (Math.random() < 0.005 * deltaTime * 0.1) {
-                backgroundElements.push(createBackgroundElement());
+            // Add new background elements less frequently
+            if (Math.random() < 0.003 * deltaTime * 0.1) { // Reduced from 0.005
+              backgroundElements.push(createBackgroundElement());
             }
             
-            // Update positions
+            // Update positions with smoother movement
             for (let i = backgroundElements.length - 1; i >= 0; i--) {
                 const element = backgroundElements[i];
-                element.x -= element.speed * deltaTime * 0.1;
+                element.x -= element.speed * deltaTime * 0.08; // Reduced from 0.1
                 
                 // Remove if off screen
                 if (element.x < -element.width) {
@@ -1824,13 +1825,13 @@ export const GameCanvas = {
       switch (specialAbilityType) {
         case 'speed':
           // Speed trail behind cat
-          if (Math.random() < 0.3) {
+          if (Math.random() < 0.2) { // Reduced from 0.3
             particles.push({
               x: catX,
               y: catY + CAT_HEIGHT * Math.random(),
-              size: Math.random() * 5 + 3,
-              speedX: -3,
-              speedY: (Math.random() - 0.5) * 2,
+              size: Math.random() * 3 + 2, // Reduced size
+              speedX: -2, // Reduced speed
+              speedY: (Math.random() - 0.5) * 1.5,
               color: '#FF5722',
               life: 15,
               type: 'speed'
@@ -1840,7 +1841,7 @@ export const GameCanvas = {
           
         case 'magnet':
           // Draw magnet effect around cat
-          ctx.fillStyle = `rgba(103, 58, 183, ${0.1 + 0.1 * Math.sin(elapsedTime * 0.01)})`;
+          ctx.fillStyle = `rgba(103, 58, 183, ${0.05 + 0.05 * Math.sin(elapsedTime * 0.005)})`; // Reduced opacity and pulse frequency
           ctx.beginPath();
           ctx.arc(
             catX + CAT_WIDTH/2, 
