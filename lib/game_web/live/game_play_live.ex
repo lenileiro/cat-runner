@@ -78,14 +78,13 @@ defmodule GameWeb.GamePlayLive do
       <canvas id="gameCanvas" phx-hook="GameCanvas" data-state={@game_state} phx-update="ignore">
         Your browser does not support the canvas element.
       </canvas>
-
       <!-- Remove or comment out this div that contains the header overlay -->
       <!-- <div class="game-ui">
-        <div class="game-header">
-          <div class="score">Score: <%= @score %></div>
-          <div class="high-score">High Score: <%= @high_score %></div>
-          <button class="pause-button" phx-click="toggle_pause">⏸️</button>
-        </div>
+      <div class="game-header">
+      <div class="score">Score: {@score}</div>
+      <div class="high-score">High Score: {@high_score}</div>
+      <button class="pause-button" phx-click="toggle_pause">⏸️</button>
+      </div>
       </div> -->
     </div>
     """
@@ -118,9 +117,10 @@ defmodule GameWeb.GamePlayLive do
   def handle_event("game_over", %{"score" => final_score}, socket) do
     high_score = max(socket.assigns.high_score, final_score)
 
-    {:noreply, socket
-    |> assign(game_state: :game_over, score: final_score, high_score: high_score)
-    |> push_event("update_high_score", %{high_score: high_score})}
+    {:noreply,
+     socket
+     |> assign(game_state: :game_over, score: final_score, high_score: high_score)
+     |> push_event("update_high_score", %{high_score: high_score})}
   end
 
   # Helper to get high score - in a real app, this might come from a database

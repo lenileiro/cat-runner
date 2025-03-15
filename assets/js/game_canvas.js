@@ -77,6 +77,8 @@ export const GameCanvas = {
     let score_multiplier = 1;
     let difficultyLevel = 1;
     let backgroundElements = [];
+    let activeHUDMessages = [];
+    const HUD_MESSAGE_DURATION = 3000; // 3 seconds for tooltips
     
     function createParticle() {
       return {
@@ -346,6 +348,9 @@ export const GameCanvas = {
       ctx.beginPath();
       ctx.ellipse(catX + CAT_WIDTH/2, getGroundY() - 3, CAT_WIDTH * 0.4, 5 - bobAmount/2, 0, 0, Math.PI * 2);
       ctx.fill();
+      
+      // Reset global alpha
+      ctx.globalAlpha = 1;
     }
     
     // Draw score display
@@ -526,6 +531,14 @@ export const GameCanvas = {
       if (gameState === 'game_over') {
         drawGameOver();
       }
+      
+      // Add these lines before drawing the score
+      if (isPlaying) {
+        drawPowerupHUD();
+        drawHUDMessages(deltaTime);
+      }
+      
+      drawScore();
       
       // Continue animation loop
       animationFrame = requestAnimationFrame(drawGameScreen);
@@ -882,6 +895,21 @@ export const GameCanvas = {
         
         // Check for collision with cat if game is active
         if (isPlaying && !isPaused) {
+          // Skip collision check if invisible is active
+          if (specialAbilityActive && specialAbilityType === 'invisible') {
+            // If invisible is active, just check if passed for scoring
+            if (!obstacle.passed && catX > obstacle.x + obstacle.width) {
+              obstacle.passed = true;
+              score++;
+              safeServerEvent.call(this, "score_update", { score });
+              const highScore = localStorage.getItem('catRunnerHighScore') || 0;
+              if (score > highScore) {
+                localStorage.setItem('catRunnerHighScore', score);
+              }
+            }
+            continue; // Skip collision detection
+          }
+          
           // Adjusted collision box (slightly smaller than visual for better gameplay)
           const catCollisionMargin = 8;
           if (
@@ -1561,7 +1589,7 @@ export const GameCanvas = {
 
     // Add power-up handling
     function spawnPowerup(x, y) {
-      const types = ['shield', 'speed', 'magnet', 'doubleJump'];
+      const types = ['speed', 'magnet', 'doubleJump']; // Removed 'invisible'
       const type = types[Math.floor(Math.random() * types.length)];
       
       powerups.push({
@@ -1601,7 +1629,6 @@ export const GameCanvas = {
             for (let j = 0; j < 15; j++) {
               let color;
               switch (powerup.type) {
-                case 'shield': color = '#2196F3'; break;
                 case 'speed': color = '#FF5722'; break;
                 case 'magnet': color = '#673AB7'; break;
                 case 'doubleJump': color = '#4CAF50'; break;
@@ -1640,23 +1667,6 @@ export const GameCanvas = {
         
         // Draw power-up based on type
         switch (powerup.type) {
-          case 'shield':
-            // Blue shield
-            ctx.fillStyle = '#2196F3';
-            ctx.beginPath();
-            ctx.arc(0, 0, powerup.size, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Shield emblem
-            ctx.fillStyle = '#BBDEFB';
-            ctx.beginPath();
-            ctx.moveTo(0, -powerup.size * 0.4);
-            ctx.lineTo(powerup.size * 0.4, powerup.size * 0.4);
-            ctx.lineTo(-powerup.size * 0.4, powerup.size * 0.4);
-            ctx.closePath();
-            ctx.fill();
-            break;
-            
           case 'speed':
             // Orange speed boost
             ctx.fillStyle = '#FF5722';
@@ -1744,26 +1754,51 @@ export const GameCanvas = {
     }
 
     function activatePowerup(type) {
-      specialAbilityActive = true;
-      specialAbilityType = type;
-      specialAbilityTimer = 10000; // 10 seconds
-      
-      console.log(`Activated power-up: ${type}`);
-      
-      switch (type) {
-        case 'shield':
-          // Shield makes you invulnerable
-          break;
-        case 'speed':
-          // Speed temporarily doubles game speed
-          gameSpeed *= 1.5;
-          break;
-        case 'magnet':
-          // Magnet attracts coins
-          break;
-        case 'doubleJump':
-          // Double jump allows a second jump in the air
-          break;
+      // Only activate if no power-up is currently active
+      if (!specialAbilityActive) {
+        specialAbilityActive = true;
+        specialAbilityType = type;
+        specialAbilityTimer = 10000; // 10 seconds
+        
+        console.log(`Activated power-up: ${type}`);
+        
+        // Clear existing HUD messages
+        activeHUDMessages = [];
+        
+        // Add tooltip message that lasts as long as the power-up
+        let message;
+        switch (type) {
+          case 'speed':
+            message = "Speed Boost: Move faster!";
+            break;
+          case 'magnet':
+            message = "Coin Magnet: Attract nearby coins!";
+            break;
+          case 'doubleJump':
+            message = "Double Jump: Jump again in mid-air!";
+            break;
+        }
+        
+        activeHUDMessages.push({
+          text: message,
+          timer: specialAbilityTimer,
+          y: 120
+        });
+        
+        switch (type) {
+          case 'speed':
+            // Speed temporarily doubles game speed
+            gameSpeed *= 1.5;
+            break;
+          case 'magnet':
+            // Magnet attracts coins
+            break;
+          case 'doubleJump':
+            // Double jump allows a second jump in the air
+            break;
+        }
+      } else {
+        console.log(`Cannot activate ${type}: ${specialAbilityType} is still active`);
       }
     }
 
@@ -1773,36 +1808,6 @@ export const GameCanvas = {
       const timeLeft = specialAbilityTimer / 10000; // 0-1 range
       
       switch (specialAbilityType) {
-        case 'shield':
-          // Draw shield around cat
-          ctx.strokeStyle = `rgba(33, 150, 243, ${0.5 + 0.5 * Math.sin(elapsedTime * 0.01)})`;
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(
-            catX + CAT_WIDTH/2, 
-            catY + CAT_HEIGHT/2, 
-            Math.max(CAT_WIDTH, CAT_HEIGHT) * 0.8, 
-            0, Math.PI * 2
-          );
-          ctx.stroke();
-          
-          // Shield particles
-          if (Math.random() < 0.2) {
-            const angle = Math.random() * Math.PI * 2;
-            const distance = Math.max(CAT_WIDTH, CAT_HEIGHT) * 0.8;
-            particles.push({
-              x: catX + CAT_WIDTH/2 + Math.cos(angle) * distance,
-              y: catY + CAT_HEIGHT/2 + Math.sin(angle) * distance,
-              size: Math.random() * 3 + 1,
-              speedX: Math.cos(angle) * -1,
-              speedY: Math.sin(angle) * -1,
-              color: '#2196F3',
-              life: 20,
-              type: 'shield'
-            });
-          }
-          break;
-          
         case 'speed':
           // Speed trail behind cat
           if (Math.random() < 0.3) {
@@ -1877,7 +1882,6 @@ export const GameCanvas = {
       // Choose color based on power-up type
       let barColor;
       switch (specialAbilityType) {
-        case 'shield': barColor = '#2196F3'; break;
         case 'speed': barColor = '#FF5722'; break;
         case 'magnet': barColor = '#673AB7'; break;
         case 'doubleJump': barColor = '#4CAF50'; break;
@@ -1971,6 +1975,111 @@ export const GameCanvas = {
             break;
         }
       });
+    }
+
+    // Add this function to draw the power-up HUD
+    function drawPowerupHUD() {
+      if (!specialAbilityActive) return;
+
+      // Position for HUD element
+      const hudX = 20;
+      const hudY = 70;
+      const iconSize = 40;
+      
+      // Draw icon background
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.beginPath();
+      ctx.roundRect(hudX, hudY, iconSize, iconSize, 8);
+      ctx.fill();
+      
+      // Draw power-up icon
+      ctx.save();
+      ctx.translate(hudX + iconSize/2, hudY + iconSize/2);
+      
+      switch (specialAbilityType) {
+        case 'speed':
+          // Speed icon
+          ctx.fillStyle = '#FF5722';
+          ctx.beginPath();
+          ctx.moveTo(-iconSize * 0.3, -iconSize * 0.3);
+          ctx.lineTo(iconSize * 0.3, 0);
+          ctx.lineTo(-iconSize * 0.3, iconSize * 0.3);
+          ctx.closePath();
+          ctx.fill();
+          break;
+          
+        case 'magnet':
+          // Magnet icon
+          ctx.fillStyle = '#673AB7';
+          ctx.beginPath();
+          ctx.moveTo(-iconSize * 0.2, -iconSize * 0.3);
+          ctx.lineTo(-iconSize * 0.2, iconSize * 0.1);
+          ctx.lineTo(0, iconSize * 0.3);
+          ctx.lineTo(iconSize * 0.2, iconSize * 0.1);
+          ctx.lineTo(iconSize * 0.2, -iconSize * 0.3);
+          ctx.closePath();
+          ctx.fill();
+          break;
+          
+        case 'doubleJump':
+          // Double jump icon
+          ctx.fillStyle = '#4CAF50';
+          // First arrow
+          ctx.beginPath();
+          ctx.moveTo(0, -iconSize * 0.3);
+          ctx.lineTo(iconSize * 0.2, -iconSize * 0.1);
+          ctx.lineTo(-iconSize * 0.2, -iconSize * 0.1);
+          ctx.closePath();
+          ctx.fill();
+          // Second arrow
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(iconSize * 0.2, iconSize * 0.2);
+          ctx.lineTo(-iconSize * 0.2, iconSize * 0.2);
+          ctx.closePath();
+          ctx.fill();
+          break;
+      }
+      ctx.restore();
+      
+      // Draw timer arc
+      const timeLeft = specialAbilityTimer / 10000;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(
+        hudX + iconSize/2,
+        hudY + iconSize/2,
+        iconSize * 0.45,
+        -Math.PI/2,
+        -Math.PI/2 + (Math.PI * 2 * timeLeft)
+      );
+      ctx.stroke();
+    }
+
+    // Add function to draw HUD messages
+    function drawHUDMessages(deltaTime) {
+      // Update and remove expired messages
+      for (let i = activeHUDMessages.length - 1; i >= 0; i--) {
+        const msg = activeHUDMessages[i];
+        msg.timer -= deltaTime;
+        
+        if (msg.timer <= 0) {
+          activeHUDMessages.splice(i, 1);
+          continue;
+        }
+        
+        // Fade out effect only in the last second
+        const alpha = msg.timer <= 1000 ? msg.timer / 1000 : 1;
+        
+        // Draw message
+        ctx.save();
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.font = 'bold 16px Arial, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(msg.text, 70, msg.y);
+        ctx.restore();
+      }
     }
   }
 }; 

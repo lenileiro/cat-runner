@@ -73,7 +73,9 @@ defmodule GameWeb.GameLive do
   def handle_event("start_game", _, socket) do
     if socket.assigns.game_state != :playing do
       IO.puts("Server: Start game event received")
-      {:noreply, socket |> assign(score: 0, game_state: :playing) |> push_event("start_game", %{})}
+
+      {:noreply,
+       socket |> assign(score: 0, game_state: :playing) |> push_event("start_game", %{})}
     else
       {:noreply, socket}
     end
@@ -100,7 +102,9 @@ defmodule GameWeb.GameLive do
   def handle_event("canvas_start", _, socket) do
     if socket.assigns.game_state != :playing do
       IO.puts("Server: Canvas start event received")
-      {:noreply, socket |> assign(score: 0, game_state: :playing) |> push_event("start_game", %{})}
+
+      {:noreply,
+       socket |> assign(score: 0, game_state: :playing) |> push_event("start_game", %{})}
     else
       {:noreply, socket}
     end
