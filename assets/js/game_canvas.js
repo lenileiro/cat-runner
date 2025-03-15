@@ -508,7 +508,7 @@ export const GameCanvas = {
           }
       }
       
-      // Draw all visual elements (these should still render when paused)
+      // Draw all visual elements
       drawBackgroundElements();
       drawParticles();
       drawClouds(deltaTime);
@@ -528,6 +528,11 @@ export const GameCanvas = {
       // Draw special ability effect
       if (specialAbilityActive) {
           drawSpecialAbilityEffect();
+      }
+      
+      // Draw pause screen if game is paused but not in game over state
+      if (isPaused && gameState !== 'game_over') {
+          drawPauseScreen();
       }
       
       // Draw game over message if needed
@@ -652,47 +657,55 @@ export const GameCanvas = {
       // Log key presses for debugging (only in development)
       // console.log("Key pressed:", event.key);
       
+      // Handle pause toggle first (only if game is playing)
+      if (isPlaying && (event.key === 'Escape' || event.key === 'p' || event.key === 'P')) {
+          togglePause();
+          event.preventDefault();
+          return;
+      }
+      
       // Handle game restart
       if (gameState === 'game_over') {
-        handleStart();
-        event.preventDefault();
-        return;
+          handleStart();
+          event.preventDefault();
+          return;
       }
       
       // Handle game start separately
       if (!isPlaying && (event.key === 'ArrowUp' || event.key === 'w' || event.key === ' ')) {
-        handleStart();
-        event.preventDefault();
-        return;
+          handleStart();
+          event.preventDefault();
+          return;
       }
       
-      // Use the jump() function instead of directly setting variables
-      if (isPlaying && !isPaused && (event.key === 'ArrowUp' || event.key === 'w' || event.key === ' ')) {
-        // console.log("Jump key pressed");
-        jump();  // Call the jump function instead of setting variables directly
-        event.preventDefault();
-        return;
-      }
-      
-      // Handle movement keys
-      switch(event.key) {
-        case 'ArrowLeft':
-        case 'a':
-          movingLeft = true;
-          movingRight = false;
-          // No need to notify server about movement - keep this local
-          break;
-        case 'ArrowRight':
-        case 'd':
-          movingRight = true;
-          movingLeft = false;
-          // No need to notify server about movement - keep this local
-          break;
-      }
-      
-      // Prevent default behavior for all game control keys
-      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'a', 'w', 'd'].includes(event.key)) {
-        event.preventDefault();
+      // Only handle other game controls if not paused
+      if (isPlaying && !isPaused) {
+          // Use the jump() function instead of directly setting variables
+          if (event.key === 'ArrowUp' || event.key === 'w' || event.key === ' ') {
+              // console.log("Jump key pressed");
+              jump();  // Call the jump function instead of setting variables directly
+              event.preventDefault();
+              return;
+          }
+          
+          // Handle movement keys
+          switch(event.key) {
+              case 'ArrowLeft':
+              case 'a':
+                  movingLeft = true;
+                  movingRight = false;
+                  break;
+              case 'ArrowRight':
+              case 'd':
+                  movingRight = true;
+                  movingLeft = false;
+                  break;
+          }
+          
+          // Prevent default behavior for all game control keys
+          if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'a', 'w', 'd'].includes(event.key)) {
+              event.preventDefault();
+          }
       }
     });
     
@@ -2043,6 +2056,67 @@ export const GameCanvas = {
         ctx.fillText(msg.text, 70, msg.y);
         ctx.restore();
       }
+      
+      // Add pause instruction that fades out after 5 seconds
+      if (isPlaying && elapsedTime < 5000) {
+          const alpha = Math.max(0, 1 - (elapsedTime / 5000));
+          ctx.save();
+          ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+          ctx.font = '16px Arial, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('Press ESC or P to pause', canvas.width/2, 40);
+          ctx.restore();
+      }
     }
+
+    // Add pause screen drawing function
+    function drawPauseScreen() {
+        // Semi-transparent overlay
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Pause text
+        ctx.fillStyle = '#FFF';
+        ctx.font = 'bold 48px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('PAUSED', canvas.width/2, canvas.height/2 - 30);
+        
+        // Instructions text with pulsing effect
+        const alpha = 0.5 + 0.5 * Math.sin(elapsedTime * 0.005);
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.font = '24px Arial, sans-serif';
+        ctx.fillText('Press ESC or P to resume', canvas.width/2, canvas.height/2 + 30);
+        
+        // Controls reminder
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.font = '20px Arial, sans-serif';
+        ctx.fillText('Controls:', canvas.width/2, canvas.height/2 + 90);
+        ctx.font = '16px Arial, sans-serif';
+        ctx.fillText('← → or A D : Move', canvas.width/2, canvas.height/2 + 120);
+        ctx.fillText('↑ or W or SPACE : Jump', canvas.width/2, canvas.height/2 + 150);
+    }
+
+    // Add pause toggle function
+    function togglePause() {
+        if (gameState !== 'game_over') {
+            isPaused = !isPaused;
+            console.log(`Game ${isPaused ? 'paused' : 'resumed'}`);
+        }
+    }
+
+    // Add pause instruction to the start screen
+    function drawStartButton() {
+        // ... existing start button code ...
+        
+        // Instructions
+        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.font = "18px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("Press Space or Up Arrow to Jump", canvas.width / 2, promptY + 60);
+        ctx.fillText("Tap the screen to jump on mobile", canvas.width / 2, promptY + 90);
+        ctx.fillText("Press ESC or P to pause during game", canvas.width / 2, promptY + 120); // Add this line
+    }
+
   }
 }; 
