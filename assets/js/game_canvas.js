@@ -139,18 +139,20 @@ export const GameCanvas = {
       
       // Draw and animate clouds
       window.clouds.forEach(cloud => {
-        // Move cloud
-        cloud.x += cloud.speed * deltaTime * 0.05;
-        
-        // Wrap around screen
-        if (cloud.x > canvas.width + cloud.width) {
-          cloud.x = -cloud.width;
-          cloud.y = Math.random() * (canvas.height * 0.5);
-          cloud.width = Math.random() * 100 + 50;
-          cloud.speed = Math.random() * 0.5 + 0.1;
+        // Move cloud only if not paused
+        if (!isPaused && isPlaying) {
+          cloud.x += cloud.speed * deltaTime * 0.05;
+          
+          // Wrap around screen
+          if (cloud.x > canvas.width + cloud.width) {
+            cloud.x = -cloud.width;
+            cloud.y = Math.random() * (canvas.height * 0.5);
+            cloud.width = Math.random() * 100 + 50;
+            cloud.speed = Math.random() * 0.5 + 0.1;
+          }
         }
         
-        // Draw a fluffy cloud
+        // Draw cloud
         const cloudHeight = cloud.width * 0.6;
         const x = cloud.x;
         const y = cloud.y;
@@ -467,55 +469,56 @@ export const GameCanvas = {
       ctx.fillStyle = skyGradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
-      // Update cat position when keys are pressed
-      updateCatPosition(deltaTime);
-      
-      // Update combo timer
-      if (comboTimer > 0) {
-        comboTimer -= deltaTime;
-        if (comboTimer <= 0) {
-          comboCount = 0;
-        }
+      // Only update game elements if not paused
+      if (!isPaused) {
+          // Update cat position when keys are pressed
+          updateCatPosition(deltaTime);
+          
+          // Update combo timer
+          if (comboTimer > 0) {
+              comboTimer -= deltaTime;
+              if (comboTimer <= 0) {
+                  comboCount = 0;
+              }
+          }
+          
+          // Update special ability timer
+          if (specialAbilityActive && specialAbilityTimer > 0) {
+              specialAbilityTimer -= deltaTime;
+              if (specialAbilityTimer <= 0) {
+                  specialAbilityActive = false;
+                  specialAbilityType = null;
+              }
+          }
+          
+          // Update difficulty
+          if (isPlaying) {
+              difficultyLevel = Math.floor(score / 10) + 1;
+          }
+          
+          // Update game elements
+          updateBackgroundElements(deltaTime);
+          updateParticles(deltaTime);
+          updateCoins(deltaTime);
+          updatePowerups(deltaTime);
+          
+          // Increase game speed gradually as score increases
+          if (isPlaying) {
+              gameSpeed = 5 + Math.floor((score / 5) / 10);
+          }
       }
       
-      // Update special ability timer
-      if (specialAbilityActive && specialAbilityTimer > 0) {
-        specialAbilityTimer -= deltaTime;
-        if (specialAbilityTimer <= 0) {
-          specialAbilityActive = false;
-          specialAbilityType = null;
-        }
-      }
-      
-      // Update difficulty
-      if (isPlaying && !isPaused) {
-        difficultyLevel = Math.floor(score / 10) + 1;
-      }
-      
-      // Draw and update background elements
-      updateBackgroundElements(deltaTime);
+      // Draw all visual elements (these should still render when paused)
       drawBackgroundElements();
-      
-      // Draw animated elements
-      updateParticles(deltaTime);
       drawParticles();
       drawClouds(deltaTime);
       drawGround();
-      
-      // Draw collectibles and power-ups
-      updateCoins(deltaTime);
       drawCoins();
-      updatePowerups(deltaTime);
       drawPowerups();
       
       // Draw and update obstacles
       if (isPlaying || gameState === 'game_over') {
-        drawObstacles(deltaTime);
-      }
-      
-      // Increase game speed gradually as score increases
-      if (isPlaying && !isPaused) {
-        gameSpeed = 5 + Math.floor((score / 5) / 10);
+          drawObstacles(deltaTime);
       }
       
       drawCat(deltaTime);
@@ -524,18 +527,18 @@ export const GameCanvas = {
       
       // Draw special ability effect
       if (specialAbilityActive) {
-        drawSpecialAbilityEffect();
+          drawSpecialAbilityEffect();
       }
       
       // Draw game over message if needed
       if (gameState === 'game_over') {
-        drawGameOver();
+          drawGameOver();
       }
       
       // Add these lines before drawing the score
       if (isPlaying) {
-        drawPowerupHUD();
-        drawHUDMessages(deltaTime);
+          drawPowerupHUD();
+          drawHUDMessages(deltaTime);
       }
       
       drawScore();
@@ -592,6 +595,7 @@ export const GameCanvas = {
       
       isPlaying = true;
       gameState = 'playing';
+      isPaused = false;  // Make sure game is unpaused when starting
       
       // Reset game variables
       score = 0;
@@ -853,93 +857,74 @@ export const GameCanvas = {
       }, 0);
     }
 
-    // Add constant for obstacle types and speeds
+    // Draw obstacles with pause check
     function drawObstacles(deltaTime) {
-      // Create new obstacles at intervals
-      obstacleTimer += deltaTime;
-      if (isPlaying && !isPaused && obstacleTimer > 1500) { // Adjust timing as needed
-        obstacleTimer = 0;
-        
-        // Randomize obstacle types
-        const obstacleType = Math.random() > 0.3 ? 'cactus' : 'bird';
-        const obstacleHeight = obstacleType === 'cactus' ? 
-          Math.random() * 20 + 30 : // Cactus heights
-          Math.random() * 15 + 20;  // Bird heights
-        
-        const yPosition = obstacleType === 'cactus' ?
-          getGroundY() - obstacleHeight : // Cactus on ground
-          getGroundY() - obstacleHeight - Math.random() * 50 - 20; // Birds at various heights
-        
-        obstacles.push({
-          x: canvas.width,
-          y: yPosition,
-          width: 30,
-          height: obstacleHeight,
-          type: obstacleType,
-          passed: false
-        });
-      }
-      
-      // Update and draw obstacles
-      for (let i = obstacles.length - 1; i >= 0; i--) {
-        const obstacle = obstacles[i];
-        
-        // Move obstacle
-        obstacle.x -= gameSpeed * (deltaTime * 0.1);
-        
-        // Remove if off screen
-        if (obstacle.x < -obstacle.width) {
-          obstacles.splice(i, 1);
-          continue;
-        }
-        
-        // Check for collision with cat if game is active
-        if (isPlaying && !isPaused) {
-          // Skip collision check if invisible is active
-          if (specialAbilityActive && specialAbilityType === 'invisible') {
-            // If invisible is active, just check if passed for scoring
-            if (!obstacle.passed && catX > obstacle.x + obstacle.width) {
-              obstacle.passed = true;
-              score++;
-              safeServerEvent.call(this, "score_update", { score });
-              const highScore = localStorage.getItem('catRunnerHighScore') || 0;
-              if (score > highScore) {
-                localStorage.setItem('catRunnerHighScore', score);
-              }
+        // Only create and move obstacles if game is not paused
+        if (!isPaused && isPlaying) {
+            // Create new obstacles at intervals
+            obstacleTimer += deltaTime;
+            if (obstacleTimer > 1500) { // Adjust timing as needed
+                obstacleTimer = 0;
+                
+                // Randomize obstacle types
+                const obstacleType = Math.random() > 0.3 ? 'cactus' : 'bird';
+                const obstacleHeight = obstacleType === 'cactus' ? 
+                    Math.random() * 20 + 30 : // Cactus heights
+                    Math.random() * 15 + 20;  // Bird heights
+                
+                const yPosition = obstacleType === 'cactus' ?
+                    getGroundY() - obstacleHeight : // Cactus on ground
+                    getGroundY() - obstacleHeight - Math.random() * 50 - 20; // Birds at various heights
+                
+                obstacles.push({
+                    x: canvas.width,
+                    y: yPosition,
+                    width: 30,
+                    height: obstacleHeight,
+                    type: obstacleType,
+                    passed: false
+                });
             }
-            continue; // Skip collision detection
-          }
-          
-          // Adjusted collision box (slightly smaller than visual for better gameplay)
-          const catCollisionMargin = 8;
-          if (
-            catX + catCollisionMargin < obstacle.x + obstacle.width &&
-            catX + CAT_WIDTH - catCollisionMargin > obstacle.x &&
-            catY + catCollisionMargin < obstacle.y + obstacle.height &&
-            catY + CAT_HEIGHT - catCollisionMargin > obstacle.y
-          ) {
-            console.log("Collision detected!");
-            handleGameOver();
-          }
+            
+            // Update obstacle positions
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obstacle = obstacles[i];
+                obstacle.x -= gameSpeed * (deltaTime * 0.1);
+                
+                // Remove if off screen
+                if (obstacle.x < -obstacle.width) {
+                    obstacles.splice(i, 1);
+                    continue;
+                }
+                
+                // Check for collision and scoring only if game is active
+                if (!obstacle.passed && catX > obstacle.x + obstacle.width) {
+                    obstacle.passed = true;
+                    score++;
+                    safeServerEvent.call(this, "score_update", { score });
+                    const highScore = localStorage.getItem('catRunnerHighScore') || 0;
+                    if (score > highScore) {
+                        localStorage.setItem('catRunnerHighScore', score);
+                    }
+                }
+                
+                // Collision detection
+                if (!specialAbilityActive || specialAbilityType !== 'invisible') {
+                    const catCollisionMargin = 8;
+                    if (
+                        catX + catCollisionMargin < obstacle.x + obstacle.width &&
+                        catX + CAT_WIDTH - catCollisionMargin > obstacle.x &&
+                        catY + catCollisionMargin < obstacle.y + obstacle.height &&
+                        catY + CAT_HEIGHT - catCollisionMargin > obstacle.y
+                    ) {
+                        handleGameOver();
+                    }
+                }
+            }
         }
         
-        // Check if cat passed the obstacle (for scoring)
-        if (!obstacle.passed && catX > obstacle.x + obstacle.width) {
-          obstacle.passed = true;
-          // Increment score
-          score++;
-          // Notify server of score update
-          safeServerEvent.call(this, "score_update", { score });
-          // Save high score locally
-          const highScore = localStorage.getItem('catRunnerHighScore') || 0;
-          if (score > highScore) {
-            localStorage.setItem('catRunnerHighScore', score);
-          }
-        }
-        
-        // Draw the obstacle
-        drawObstacle(obstacle);
-      }
+        // Draw obstacles regardless of pause state
+        obstacles.forEach(obstacle => drawObstacle(obstacle));
     }
 
     // Draw individual obstacle
@@ -1066,6 +1051,20 @@ export const GameCanvas = {
       console.log("Game over triggered");
       isPlaying = false;
       gameState = 'game_over';
+      isPaused = true; // Add this line to pause the game
+      
+      // Reset movement states
+      movingLeft = false;
+      movingRight = false;
+      isJumping = false;
+      catVelX = 0;
+      jumpForce = 0;
+      
+      // Reset power-up state
+      specialAbilityActive = false;
+      specialAbilityTimer = 0;
+      specialAbilityType = null;
+      gameSpeed = 5; // Reset game speed in case speed power-up was active
       
       // Save high score locally
       const highScore = localStorage.getItem('catRunnerHighScore') || 0;
@@ -1240,21 +1239,23 @@ export const GameCanvas = {
 
     // Update and draw background elements
     function updateBackgroundElements(deltaTime) {
-      // Add new background elements occasionally
-      if (Math.random() < 0.005 * deltaTime * 0.1) {
-        backgroundElements.push(createBackgroundElement());
-      }
-      
-      // Update positions
-      for (let i = backgroundElements.length - 1; i >= 0; i--) {
-        const element = backgroundElements[i];
-        element.x -= element.speed * deltaTime * 0.1;
-        
-        // Remove if off screen
-        if (element.x < -element.width) {
-          backgroundElements.splice(i, 1);
+        if (!isPaused && isPlaying) {
+            // Add new background elements occasionally
+            if (Math.random() < 0.005 * deltaTime * 0.1) {
+                backgroundElements.push(createBackgroundElement());
+            }
+            
+            // Update positions
+            for (let i = backgroundElements.length - 1; i >= 0; i--) {
+                const element = backgroundElements[i];
+                element.x -= element.speed * deltaTime * 0.1;
+                
+                // Remove if off screen
+                if (element.x < -element.width) {
+                    backgroundElements.splice(i, 1);
+                }
+            }
         }
-      }
     }
 
     function drawBackgroundElements() {
@@ -1937,44 +1938,6 @@ export const GameCanvas = {
       const b = interpolate(rgb1[2], rgb2[2], factor);
       
       return `rgb(${r}, ${g}, ${b})`;
-    }
-
-    // Update and draw background elements
-    function updateBackgroundElements(deltaTime) {
-      // Add new background elements occasionally
-      if (Math.random() < 0.005 * deltaTime * 0.1) {
-        backgroundElements.push(createBackgroundElement());
-      }
-      
-      // Update positions
-      for (let i = backgroundElements.length - 1; i >= 0; i--) {
-        const element = backgroundElements[i];
-        element.x -= element.speed * deltaTime * 0.1;
-        
-        // Remove if off screen
-        if (element.x < -element.width) {
-          backgroundElements.splice(i, 1);
-        }
-      }
-    }
-
-    function drawBackgroundElements() {
-      backgroundElements.forEach(element => {
-        switch(element.type) {
-          case 'mountain':
-            drawMountain(element);
-            break;
-          case 'tree':
-            drawTree(element);
-            break;
-          case 'bush':
-            drawBush(element);
-            break;
-          case 'cloud':
-            // Clouds are drawn elsewhere
-            break;
-        }
-      });
     }
 
     // Add this function to draw the power-up HUD
