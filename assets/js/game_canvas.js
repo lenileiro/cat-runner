@@ -128,25 +128,188 @@ export const GameCanvas = {
   
     // Draw powerup timer
     function drawPowerupTimer(type, timeLeft) {
-      const barWidth = 100;
-      const barHeight = 8;
       const timeRatio = timeLeft / 10000;
       
-      // Different colors for different power-ups
-      let barColor;
+      // Create a cleaner looking, more modern power-up indicator
+      // Position it above the cat
+      const indicatorX = game.catX + CONSTANTS.CAT_WIDTH / 2;
+      const indicatorY = game.catY - 25;
+      
+      // Draw a clean pill-shaped background
+      const pillWidth = 100;
+      const pillHeight = 10;
+      const radius = pillHeight / 2;
+      
+      // Background with slight transparency
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.beginPath();
+      ctx.moveTo(indicatorX - pillWidth/2 + radius, indicatorY - pillHeight/2);
+      ctx.lineTo(indicatorX + pillWidth/2 - radius, indicatorY - pillHeight/2);
+      ctx.arc(indicatorX + pillWidth/2 - radius, indicatorY, radius, -Math.PI/2, Math.PI/2);
+      ctx.lineTo(indicatorX - pillWidth/2 + radius, indicatorY + pillHeight/2);
+      ctx.arc(indicatorX - pillWidth/2 + radius, indicatorY, radius, Math.PI/2, -Math.PI/2);
+      ctx.fill();
+      
+      // Different colors and icons for different power-ups
+      let barColor, iconType;
       switch (type) {
-        case 'speed': barColor = '#FF5722'; break;
-        case 'magnet': barColor = '#673AB7'; break;
-        case 'doubleJump': barColor = '#4CAF50'; break;
+        case 'speed': 
+          barColor = '#FF5722'; // Orange
+          iconType = "⚡"; // Lightning bolt
+          break;
+        case 'magnet': 
+          barColor = '#673AB7'; // Purple
+          iconType = "🧲"; // Magnet
+          break;
+        case 'doubleJump': 
+          barColor = '#4CAF50'; // Green
+          iconType = "↑↑"; // Double arrows
+          break;
       }
       
+      // Progress fill
+      const fillWidth = Math.max(0, pillWidth * timeRatio - radius * 2);
       ctx.fillStyle = barColor;
-      ctx.fillRect(
-        game.catX + CONSTANTS.CAT_WIDTH/2 - barWidth/2,
-        game.catY - 20,
-        barWidth * timeRatio,
-        barHeight
-      );
+      ctx.beginPath();
+      ctx.moveTo(indicatorX - pillWidth/2 + radius, indicatorY - pillHeight/2 + 2);
+      ctx.lineTo(indicatorX - pillWidth/2 + radius + fillWidth, indicatorY - pillHeight/2 + 2);
+      ctx.lineTo(indicatorX - pillWidth/2 + radius + fillWidth, indicatorY + pillHeight/2 - 2);
+      ctx.lineTo(indicatorX - pillWidth/2 + radius, indicatorY + pillHeight/2 - 2);
+      ctx.arc(indicatorX - pillWidth/2 + radius, indicatorY, radius - 2, Math.PI/2, -Math.PI/2);
+      ctx.fill();
+      
+      // Add a subtle glow effect at the end of the progress bar
+      if (timeRatio > 0.05) {
+        const glowPos = indicatorX - pillWidth/2 + radius + fillWidth;
+        const gradient = ctx.createRadialGradient(
+          glowPos, indicatorY, 0,
+          glowPos, indicatorY, radius * 2
+        );
+        gradient.addColorStop(0, barColor);
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(glowPos, indicatorY, radius * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // Draw power-up icon
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '14px Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(iconType, indicatorX - pillWidth/2 - 18, indicatorY);
+      
+      // Add special effects for each power-up (without particles)
+      switch (type) {
+        case 'speed':
+          // Speed lines around cat
+          ctx.strokeStyle = `rgba(255, 87, 34, ${0.3 + 0.2 * Math.sin(game.elapsedTime * 0.01)})`;
+          ctx.lineWidth = 2;
+          
+          // Draw speed lines
+          for (let i = 0; i < 3; i++) {
+            const lineLength = 15 + 5 * Math.sin(game.elapsedTime * 0.01 + i);
+            ctx.beginPath();
+            ctx.moveTo(game.catX - lineLength, game.catY + 10 + i * 10);
+            ctx.lineTo(game.catX - 5, game.catY + 10 + i * 10);
+            ctx.stroke();
+          }
+          break;
+          
+        case 'magnet':
+          // Draw magnet effect around cat - pulse circle
+          const radius = 120;
+          const pulseSize = 20 * Math.sin(game.elapsedTime * 0.005);
+          
+          // Draw concentric circles with gradient
+          const magnetGradient = ctx.createRadialGradient(
+            game.catX + CONSTANTS.CAT_WIDTH/2, 
+            game.catY + CONSTANTS.CAT_HEIGHT/2, 
+            0,
+            game.catX + CONSTANTS.CAT_WIDTH/2, 
+            game.catY + CONSTANTS.CAT_HEIGHT/2, 
+            radius + pulseSize
+          );
+          
+          magnetGradient.addColorStop(0, 'rgba(103, 58, 183, 0)');
+          magnetGradient.addColorStop(0.7, 'rgba(103, 58, 183, 0.1)');
+          magnetGradient.addColorStop(0.9, 'rgba(103, 58, 183, 0.2)');
+          magnetGradient.addColorStop(1, 'rgba(103, 58, 183, 0)');
+          
+          ctx.fillStyle = magnetGradient;
+          ctx.beginPath();
+          ctx.arc(
+            game.catX + CONSTANTS.CAT_WIDTH/2, 
+            game.catY + CONSTANTS.CAT_HEIGHT/2, 
+            radius + pulseSize, 
+            0, Math.PI * 2
+          );
+          ctx.fill();
+          
+          // Add thin ring at edge
+          ctx.strokeStyle = 'rgba(103, 58, 183, 0.3)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(
+            game.catX + CONSTANTS.CAT_WIDTH/2, 
+            game.catY + CONSTANTS.CAT_HEIGHT/2, 
+            radius + pulseSize, 
+            0, Math.PI * 2
+          );
+          ctx.stroke();
+          
+          // Pull nearby coins toward the cat (keep this functionality)
+          game.coins.forEach(coin => {
+            if (coin.collected) return;
+            
+            const dx = (game.catX + CONSTANTS.CAT_WIDTH/2) - coin.x;
+            const dy = (game.catY + CONSTANTS.CAT_HEIGHT/2) - coin.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < 150) {
+              coin.x += dx * 0.05;
+              coin.y += dy * 0.05;
+            }
+          });
+          break;
+          
+        case 'doubleJump':
+          // Double jump indicator - arrow indicators
+          if (game.isJumping) {
+            const arrowY = game.catY + CONSTANTS.CAT_HEIGHT;
+            const arrowOpacity = 0.3 + 0.2 * Math.sin(game.elapsedTime * 0.01);
+            
+            // Draw a double arrow under the cat
+            ctx.fillStyle = `rgba(76, 175, 80, ${arrowOpacity})`;
+            
+            // First arrow
+            ctx.beginPath();
+            ctx.moveTo(game.catX + CONSTANTS.CAT_WIDTH/2, arrowY + 15);
+            ctx.lineTo(game.catX + CONSTANTS.CAT_WIDTH/2 - 10, arrowY + 25);
+            ctx.lineTo(game.catX + CONSTANTS.CAT_WIDTH/2 - 5, arrowY + 25);
+            ctx.lineTo(game.catX + CONSTANTS.CAT_WIDTH/2 - 5, arrowY + 35);
+            ctx.lineTo(game.catX + CONSTANTS.CAT_WIDTH/2 + 5, arrowY + 35);
+            ctx.lineTo(game.catX + CONSTANTS.CAT_WIDTH/2 + 5, arrowY + 25);
+            ctx.lineTo(game.catX + CONSTANTS.CAT_WIDTH/2 + 10, arrowY + 25);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Second arrow (slightly below)
+            ctx.beginPath();
+            ctx.moveTo(game.catX + CONSTANTS.CAT_WIDTH/2, arrowY + 30);
+            ctx.lineTo(game.catX + CONSTANTS.CAT_WIDTH/2 - 10, arrowY + 40);
+            ctx.lineTo(game.catX + CONSTANTS.CAT_WIDTH/2 - 5, arrowY + 40);
+            ctx.lineTo(game.catX + CONSTANTS.CAT_WIDTH/2 - 5, arrowY + 50);
+            ctx.lineTo(game.catX + CONSTANTS.CAT_WIDTH/2 + 5, arrowY + 50);
+            ctx.lineTo(game.catX + CONSTANTS.CAT_WIDTH/2 + 5, arrowY + 40);
+            ctx.lineTo(game.catX + CONSTANTS.CAT_WIDTH/2 + 10, arrowY + 40);
+            ctx.closePath();
+            ctx.fill();
+          }
+          break;
+      }
     }
     
     // Draw combo counter
