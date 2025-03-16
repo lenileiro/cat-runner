@@ -10,9 +10,30 @@ export const ObstacleSystem = {
       Math.random() * 20 + 30 : // Cactus heights
       Math.random() * 15 + 20;  // Bird heights
     
-    const yPosition = obstacleType === 'cactus' ?
-      Utils.getGroundY(canvas) - obstacleHeight : // Cactus on ground
-      Utils.getGroundY(canvas) - obstacleHeight - Math.random() * 50 - 20; // Birds at various heights
+    // Get ground Y position
+    const groundY = Utils.getGroundY(canvas);
+    
+    // Calculate y position for the obstacle
+    let yPosition;
+    
+    if (obstacleType === 'cactus') {
+      // Cactus on ground
+      yPosition = groundY - obstacleHeight;
+    } else {
+      // Birds at various heights - with focus on coin areas
+      const birdPositionRng = Math.random();
+      
+      if (birdPositionRng < 0.6) {
+        // 60% chance to be at coin height (80-150px above ground)
+        yPosition = groundY - obstacleHeight - 80 - Math.random() * 70;
+      } else if (birdPositionRng < 0.85) {
+        // 25% chance to be at low height (20-80px above ground)
+        yPosition = groundY - obstacleHeight - 20 - Math.random() * 60;
+      } else {
+        // 15% chance to be at high height (150-200px above ground)
+        yPosition = groundY - obstacleHeight - 150 - Math.random() * 50;
+      }
+    }
     
     return {
       x: canvas.width,
@@ -274,7 +295,10 @@ export const CoinSystem = {
 export const PowerupSystem = {
   // Create a power-up
   create: (canvas, x, y) => {
-    const types = ['speed', 'magnet', 'doubleJump'];
+    const types = [
+      'speed', 'magnet', 'doubleJump', 'shield', 'slowmo', 'minisize', 'coinDoubler',
+      'timeFreezer', 'flight'
+    ];
     const type = types[Math.floor(Math.random() * types.length)];
     
     return {
@@ -371,6 +395,74 @@ export const PowerupSystem = {
         ctx.lineTo(powerup.size * 0.3, powerup.size * 0.3);
         ctx.lineTo(-powerup.size * 0.3, powerup.size * 0.3);
         ctx.closePath();
+        ctx.fill();
+        break;
+        
+      case 'timeFreezer':
+        // Blue time freezer
+        ctx.fillStyle = '#03A9F4';
+        ctx.beginPath();
+        ctx.arc(0, 0, powerup.size, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Snowflake icon
+        ctx.fillStyle = '#E1F5FE';
+        const spikes = 6;
+        for (let i = 0; i < spikes; i++) {
+          const angle = (i / spikes) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(angle) * powerup.size * 0.7, Math.sin(angle) * powerup.size * 0.7);
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#E1F5FE';
+          ctx.stroke();
+          
+          // Small circles at the end of each spike
+          ctx.beginPath();
+          ctx.arc(
+            Math.cos(angle) * powerup.size * 0.7,
+            Math.sin(angle) * powerup.size * 0.7,
+            powerup.size * 0.15,
+            0, Math.PI * 2
+          );
+          ctx.fill();
+        }
+        break;
+        
+      case 'flight':
+        // Sky blue flight powerup
+        ctx.fillStyle = '#81D4FA';
+        ctx.beginPath();
+        ctx.arc(0, 0, powerup.size, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Wing design
+        ctx.fillStyle = '#E1F5FE';
+        
+        // Left wing
+        ctx.beginPath();
+        ctx.moveTo(-powerup.size * 0.2, 0);
+        ctx.quadraticCurveTo(
+          -powerup.size * 0.8, -powerup.size * 0.5,
+          -powerup.size * 1.0, 0
+        );
+        ctx.quadraticCurveTo(
+          -powerup.size * 0.8, powerup.size * 0.2,
+          -powerup.size * 0.2, 0
+        );
+        ctx.fill();
+        
+        // Right wing
+        ctx.beginPath();
+        ctx.moveTo(powerup.size * 0.2, 0);
+        ctx.quadraticCurveTo(
+          powerup.size * 0.8, -powerup.size * 0.5,
+          powerup.size * 1.0, 0
+        );
+        ctx.quadraticCurveTo(
+          powerup.size * 0.8, powerup.size * 0.2,
+          powerup.size * 0.2, 0
+        );
         ctx.fill();
         break;
     }

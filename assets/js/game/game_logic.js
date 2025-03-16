@@ -25,6 +25,8 @@ export class GameState {
     this.jumpForce = 0;
     this.movingLeft = false;
     this.movingRight = false;
+    this.movingUp = false;
+    this.movingDown = false;
     
     // Game objects
     this.obstacles = [];
@@ -172,13 +174,43 @@ export class GameState {
     // Update vertical position (jumping)
     if (this.isJumping) {
       this.catY -= this.jumpForce;
-      this.jumpForce -= CONSTANTS.GRAVITY * 0.8; // Reduced gravity effect for smoother jumps
       
-      // Check if landed
-      if (this.catY >= Utils.getGroundY(this.canvas) - CONSTANTS.CAT_HEIGHT) {
-        this.catY = Utils.getGroundY(this.canvas) - CONSTANTS.CAT_HEIGHT;
-        this.isJumping = false;
-        this.jumpForce = 0;
+      // Handle flight powerup differently
+      if (this.specialAbilityActive && this.specialAbilityType === 'flight') {
+        // Allow manual control of flight
+        const flightSpeed = 5;
+        
+        if (this.movingUp) {
+          this.catY -= flightSpeed;
+        }
+        if (this.movingDown) {
+          this.catY += flightSpeed;
+        }
+        
+        // Add gentle hover effect when not controlling
+        if (!this.movingUp && !this.movingDown) {
+          this.catY += Math.sin(this.elapsedTime * 0.01) * 0.5;
+        }
+        
+        // Keep cat within reasonable height bounds
+        const minHeight = 50;
+        const maxHeight = Utils.getGroundY(this.canvas) - CONSTANTS.CAT_HEIGHT - 20;
+        
+        if (this.catY < minHeight) {
+          this.catY = minHeight;
+        } else if (this.catY > maxHeight) {
+          this.catY = maxHeight;
+        }
+      } else {
+        // Normal jump physics
+        this.jumpForce -= CONSTANTS.GRAVITY * 0.8;
+        
+        // Check if landed
+        if (this.catY >= Utils.getGroundY(this.canvas) - CONSTANTS.CAT_HEIGHT) {
+          this.catY = Utils.getGroundY(this.canvas) - CONSTANTS.CAT_HEIGHT;
+          this.isJumping = false;
+          this.jumpForce = 0;
+        }
       }
     }
   }
@@ -195,7 +227,13 @@ export class GameState {
       // Update obstacle positions
       for (let i = this.obstacles.length - 1; i >= 0; i--) {
         const obstacle = this.obstacles[i];
-        obstacle.x -= this.gameSpeed * (deltaTime * 0.1);
+        
+        // Time freezer effect - obstacles barely move
+        if (this.specialAbilityActive && this.specialAbilityType === 'timeFreezer') {
+          obstacle.x -= 0.1 * (deltaTime * 0.1);
+        } else {
+          obstacle.x -= this.gameSpeed * (deltaTime * 0.1);
+        }
         
         // Remove if off screen
         if (obstacle.x < -obstacle.width) {
@@ -217,15 +255,26 @@ export class GameState {
         }
         
         // Collision detection
-        if (!this.specialAbilityActive || this.specialAbilityType !== 'invisible') {
-          const catCollisionMargin = 8;
-          if (
-            this.catX + catCollisionMargin < obstacle.x + obstacle.width &&
-            this.catX + CONSTANTS.CAT_WIDTH - catCollisionMargin > obstacle.x &&
-            this.catY + catCollisionMargin < obstacle.y + obstacle.height &&
-            this.catY + CONSTANTS.CAT_HEIGHT - catCollisionMargin > obstacle.y
-          ) {
-            this.handleGameOver();
+        if ((!this.specialAbilityActive || 
+            (this.specialAbilityType !== 'invisible' && 
+             this.specialAbilityType !== 'shield' &&
+             this.specialAbilityType !== 'ghostMode' && 
+             this.specialAbilityType !== 'superDash')) &&
+            !this.invulnerable) {
+          
+          // Flight powerup - avoid obstacles completely
+          if (this.specialAbilityActive && this.specialAbilityType === 'flight') {
+            // No collision check needed - cat is too high
+          } else {
+            const catCollisionMargin = 8;
+            if (
+              this.catX + catCollisionMargin < obstacle.x + obstacle.width &&
+              this.catX + CONSTANTS.CAT_WIDTH - catCollisionMargin > obstacle.x &&
+              this.catY + catCollisionMargin < obstacle.y + obstacle.height &&
+              this.catY + CONSTANTS.CAT_HEIGHT - catCollisionMargin > obstacle.y
+            ) {
+              this.handleGameOver();
+            }
           }
         }
       }
@@ -234,9 +283,19 @@ export class GameState {
   
   updateCoins(deltaTime) {
     // Generate new coins occasionally
-    if (this.isPlaying && !this.isPaused && Math.random() < 0.01) {
-      const newCoins = CoinSystem.create(this.canvas);
-      this.coins = [...this.coins, ...newCoins];
+    if (this.isPlaying && !this.isPaused) {
+      // Normal chance of coin generation
+      let coinChance = 0.01;
+      
+      // Increase chance with Lucky Break
+      if (this.specialAbilityActive && this.specialAbilityType === 'luckyBreak') {
+        coinChance = 0.05;  // 5x more coins
+      }
+      
+      if (Math.random() < coinChance) {
+        const newCoins = CoinSystem.create(this.canvas);
+        this.coins = [...this.coins, ...newCoins];
+      }
     }
     
     // Update coin positions
@@ -327,6 +386,10 @@ export class GameState {
               case 'speed': color = '#FF5722'; break;
               case 'magnet': color = '#673AB7'; break;
               case 'doubleJump': color = '#4CAF50'; break;
+              case 'shield': color = '#2196F3'; break;
+              case 'slowmo': color = '#9C27B0'; break;
+              case 'minisize': color = '#00BCD4'; break;
+              case 'coinDoubler': color = '#FFC107'; break;
             }
             
             this.particles.push({
@@ -367,6 +430,67 @@ export class GameState {
           break;
         case 'doubleJump':
           message = "Double Jump: Jump again in mid-air!";
+          break;
+        case 'shield':
+          message = "Shield: Protects from obstacles!";
+          this.shieldActive = true;
+          break;
+        case 'slowmo':
+          message = "Slow Motion: Time slows down!";
+          this.gameSpeed *= 0.6;
+          break;
+        case 'minisize':
+          // Store original dimensions
+          this.originalCatWidth = CONSTANTS.CAT_WIDTH;
+          this.originalCatHeight = CONSTANTS.CAT_HEIGHT;
+          // Reduce cat size
+          CONSTANTS.CAT_WIDTH *= 0.6;
+          CONSTANTS.CAT_HEIGHT *= 0.6;
+          message = "Mini Size: Easier to avoid obstacles!";
+          break;
+        case 'coinDoubler':
+          message = "Coin Doubler: Coins worth 2x points!";
+          this.coinValueMultiplier = 2;
+          break;
+        case 'timeFreezer':
+          message = "Time Freezer: Obstacles stop moving!";
+          this.timeFreeze = true;
+          // Store original game speed
+          this.originalGameSpeed = this.gameSpeed;
+          this.gameSpeed = 0.1; // Almost stopped
+          break;
+        case 'superDash':
+          message = "Super Dash: Blast through obstacles!";
+          this.superDashActive = true;
+          this.gameSpeed *= 2;
+          // Temporary invulnerability
+          this.invulnerable = true;
+          break;
+        case 'flight':
+          message = "Flight: Soar and control with arrow keys!";
+          this.flightActive = true;
+          // Start slightly above ground
+          this.catY = Utils.getGroundY(this.canvas) - CONSTANTS.CAT_HEIGHT - 80;
+          this.isJumping = true;
+          this.jumpForce = 0; // No initial upward force, player controls instead
+          break;
+        case 'ghostMode':
+          message = "Ghost Mode: Pass through obstacles!";
+          this.ghostActive = true;
+          break;
+        case 'luckyBreak':
+          message = "Lucky Break: Higher chance of coins!";
+          this.luckyBreakActive = true;
+          // Immediately spawn some coins around the player
+          for (let i = 0; i < 10; i++) {
+            this.coins.push({
+              x: this.catX + CONSTANTS.CAT_WIDTH/2 + Math.random() * 200,
+              y: Utils.getGroundY(this.canvas) - 50 - Math.random() * 100,
+              size: 15,
+              collected: false,
+              value: 1
+            });
+          }
           break;
       }
       
@@ -449,8 +573,45 @@ export class GameState {
       if (this.specialAbilityActive && this.specialAbilityTimer > 0) {
         this.specialAbilityTimer -= deltaTime;
         if (this.specialAbilityTimer <= 0) {
-          if (this.specialAbilityType === 'speed') {
-            this.gameSpeed /= 1.5;
+          // Cleanup based on powerup type
+          switch (this.specialAbilityType) {
+            case 'speed':
+              this.gameSpeed /= 1.5;
+              break;
+            case 'shield':
+              this.shieldActive = false;
+              break;
+            case 'slowmo':
+              this.gameSpeed /= 0.6; // restore normal speed
+              break;
+            case 'minisize':
+              // Restore original dimensions
+              CONSTANTS.CAT_WIDTH = this.originalCatWidth;
+              CONSTANTS.CAT_HEIGHT = this.originalCatHeight;
+              break;
+            case 'coinDoubler':
+              this.coinValueMultiplier = 1;
+              break;
+            case 'timeFreezer':
+              this.timeFreeze = false;
+              this.gameSpeed = this.originalGameSpeed;
+              break;
+            case 'superDash':
+              this.superDashActive = false;
+              this.invulnerable = false;
+              this.gameSpeed /= 2;
+              break;
+            case 'flight':
+              this.flightActive = false;
+              this.isJumping = true; // Keep jumping active for landing
+              this.jumpForce = -5; // Apply a downward force to simulate dropping
+              break;
+            case 'ghostMode':
+              this.ghostActive = false;
+              break;
+            case 'luckyBreak':
+              this.luckyBreakActive = false;
+              break;
           }
           this.specialAbilityActive = false;
           this.specialAbilityType = null;
