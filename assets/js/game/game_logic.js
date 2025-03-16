@@ -87,6 +87,36 @@ export class GameState {
     this.isJumping = false;
     this.movingLeft = false;
     this.movingRight = false;
+    this.movingUp = false;
+    this.movingDown = false;
+    
+    // Reset powerup state
+    this.specialAbilityActive = false;
+    this.specialAbilityTimer = 0;
+    this.specialAbilityType = null;
+    this.flightActive = false;
+    this.shieldActive = false;
+    this.timeFreeze = false;
+    this.coinValueMultiplier = 1;
+    
+    // Reset any modified cat dimensions
+    if (this.originalCatWidth && this.originalCatHeight) {
+      CONSTANTS.CAT_WIDTH = this.originalCatWidth;
+      CONSTANTS.CAT_HEIGHT = this.originalCatHeight;
+      this.originalCatWidth = null;
+      this.originalCatHeight = null;
+    }
+    
+    // Clear all powerups from the game
+    this.powerups = [];
+    
+    // Clear all HUD messages
+    this.activeHUDMessages = [];
+    
+    // Reset combo system
+    this.comboCount = 0;
+    this.comboTimer = 0;
+    this.score_multiplier = 1;
     
     // Reset elapsed time to show instructions again
     this.elapsedTime = 0;
