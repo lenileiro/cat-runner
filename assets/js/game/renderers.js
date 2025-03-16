@@ -121,37 +121,217 @@ export const Background = {
     }
   },
   
-  // Sky with day/night cycle
+  // Updated Sky with day/night cycle
   drawSky: (ctx, canvas, dayNightCycle) => {
     // Draw sky gradient based on time of day
     const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
     
-    // Morning colors
-    if (dayNightCycle < 0.25) {
+    // Calculate time periods more precisely for smoother transitions
+    if (dayNightCycle < 0.25) { // Night to dawn transition
+      // Midnight to dawn transition
       const t = dayNightCycle * 4; // 0 to 1 during this phase
-      skyGradient.addColorStop(0, Utils.interpolateColor('#0C1445', '#6EC6FF', t));
-      skyGradient.addColorStop(1, Utils.interpolateColor('#1A237E', '#E3F2FD', t));
+      skyGradient.addColorStop(0, Utils.interpolateColor('#0a1a33', '#1e3c72', t)); // Deep blue to dawn blue
+      skyGradient.addColorStop(0.4, Utils.interpolateColor('#1a2a4d', '#c06060', t)); // Midnight to sunrise orange
+      skyGradient.addColorStop(0.7, Utils.interpolateColor('#2d334d', '#d39c7e', t)); // Dark to warm transition
+      skyGradient.addColorStop(1, Utils.interpolateColor('#2d334d', '#e0d2c0', t));   // Ground-level color
     } 
-    // Day colors
-    else if (dayNightCycle < 0.5) {
-      skyGradient.addColorStop(0, '#6EC6FF');
-      skyGradient.addColorStop(1, '#E3F2FD');
+    else if (dayNightCycle < 0.5) { // Dawn to day
+      const t = (dayNightCycle - 0.25) * 4; // 0 to 1 during this phase
+      skyGradient.addColorStop(0, Utils.interpolateColor('#1e3c72', '#2980b9', t)); // Dawn blue to day blue
+      skyGradient.addColorStop(0.4, Utils.interpolateColor('#c06060', '#6bb9e0', t)); // Sunrise orange to sky blue
+      skyGradient.addColorStop(0.7, Utils.interpolateColor('#d39c7e', '#a1d6e6', t)); // Warm to cool transition
+      skyGradient.addColorStop(1, Utils.interpolateColor('#e0d2c0', '#a1d6e6', t));   // Ground-level color
     } 
-    // Evening colors
-    else if (dayNightCycle < 0.75) {
+    else if (dayNightCycle < 0.75) { // Day to dusk
       const t = (dayNightCycle - 0.5) * 4; // 0 to 1 during this phase
-      skyGradient.addColorStop(0, Utils.interpolateColor('#6EC6FF', '#FF9800', t));
-      skyGradient.addColorStop(1, Utils.interpolateColor('#E3F2FD', '#FF5722', t));
+      skyGradient.addColorStop(0, Utils.interpolateColor('#2980b9', '#1e3c72', t)); // Day blue to dusk blue
+      skyGradient.addColorStop(0.4, Utils.interpolateColor('#6bb9e0', '#c06060', t)); // Sky blue to sunset orange
+      skyGradient.addColorStop(0.7, Utils.interpolateColor('#a1d6e6', '#d39c7e', t)); // Cool to warm transition
+      skyGradient.addColorStop(1, Utils.interpolateColor('#a1d6e6', '#e0d2c0', t));   // Ground-level color
     } 
-    // Night colors
-    else {
+    else { // Dusk to night
       const t = (dayNightCycle - 0.75) * 4; // 0 to 1 during this phase
-      skyGradient.addColorStop(0, Utils.interpolateColor('#FF9800', '#0C1445', t));
-      skyGradient.addColorStop(1, Utils.interpolateColor('#FF5722', '#1A237E', t));
+      skyGradient.addColorStop(0, Utils.interpolateColor('#1e3c72', '#0a1a33', t)); // Dusk blue to deep blue
+      skyGradient.addColorStop(0.4, Utils.interpolateColor('#c06060', '#1a2a4d', t)); // Sunset orange to midnight
+      skyGradient.addColorStop(0.7, Utils.interpolateColor('#d39c7e', '#2d334d', t)); // Warm to dark transition
+      skyGradient.addColorStop(1, Utils.interpolateColor('#e0d2c0', '#2d334d', t));   // Ground-level color
     }
     
     ctx.fillStyle = skyGradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw celestial bodies (sun/moon) based on cycle
+    const celestialX = canvas.width * 0.8;
+    const celestialY = canvas.height * 0.2;
+    
+    if (dayNightCycle < 0.75 && dayNightCycle > 0.25) {
+      // Sun - visible during day and transitions
+      const sunAlpha = dayNightCycle < 0.5 ? 
+        Math.min(1, (dayNightCycle - 0.25) * 4) : // Fade in
+        Math.max(0, 1 - ((dayNightCycle - 0.5) * 4)); // Fade out
+      
+      const sunGlow = ctx.createRadialGradient(
+        celestialX, celestialY, 0,
+        celestialX, celestialY, 60
+      );
+      sunGlow.addColorStop(0, `rgba(255, 240, 150, ${sunAlpha * 0.6})`);
+      sunGlow.addColorStop(0.5, `rgba(255, 210, 100, ${sunAlpha * 0.2})`);
+      sunGlow.addColorStop(1, 'rgba(255, 210, 0, 0)');
+      
+      ctx.fillStyle = sunGlow;
+      ctx.beginPath();
+      ctx.arc(celestialX, celestialY, 60, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = `rgba(255, 238, 88, ${sunAlpha})`;
+      ctx.beginPath();
+      ctx.arc(celestialX, celestialY, 25, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Moon - visible during night and transitions
+      const moonAlpha = dayNightCycle > 0.75 ? 
+        Math.min(1, (dayNightCycle - 0.75) * 4) : // Fade in
+        Math.max(0, 1 - (dayNightCycle * 4));      // Fade out
+      
+      // Moon glow
+      ctx.fillStyle = `rgba(255, 255, 255, ${moonAlpha * 0.1})`;
+      ctx.beginPath();
+      ctx.arc(celestialX, celestialY, 28, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Moon body
+      ctx.fillStyle = `rgba(224, 224, 224, ${moonAlpha})`;
+      ctx.beginPath();
+      ctx.arc(celestialX, celestialY, 25, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Moon craters - only visible when moon is visible
+      if (moonAlpha > 0.3) {
+        ctx.fillStyle = `rgba(200, 200, 200, ${moonAlpha * 0.2})`;
+        ctx.beginPath();
+        ctx.arc(celestialX - 8, celestialY - 5, 6, 0, Math.PI * 2);
+        ctx.arc(celestialX + 10, celestialY + 8, 4, 0, Math.PI * 2);
+        ctx.arc(celestialX + 3, celestialY - 10, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  },
+  
+  // Draw stars with twinkling effect
+  drawStars: (ctx, canvas, elapsedTime, brightness) => {
+    // Initialize stars if they don't exist
+    if (!window.gameStars) {
+      window.gameStars = [];
+      for (let i = 0; i < 100; i++) {
+        window.gameStars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * (canvas.height * 0.7),
+          size: Math.random() * 2 + 1,
+          twinkleSpeed: Math.random() * 0.01 + 0.005,
+          twinkleOffset: Math.random() * Math.PI * 2
+        });
+      }
+    }
+    
+    // Draw each star with twinkling effect
+    ctx.fillStyle = 'white';
+    window.gameStars.forEach(star => {
+      const twinkle = (Math.sin(elapsedTime * star.twinkleSpeed + star.twinkleOffset) + 1) / 2;
+      ctx.globalAlpha = (0.3 + twinkle * 0.7) * brightness;
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    
+    ctx.globalAlpha = 1;
+  },
+  
+  // Draw mountains with parallax effect
+  drawMountains: (ctx, canvas, elapsedTime, isPaused = false) => {
+    const groundY = Utils.getGroundY(canvas);
+    const mountainHeight = canvas.height * 0.25;
+    
+    // Parallax effect - different mountains move at different speeds
+    // Only move if game is not paused
+    const speed = isPaused ? 0 : 1;
+    const farOffset = (elapsedTime * 0.005 * speed) % canvas.width;
+    const midOffset = (elapsedTime * 0.01 * speed) % canvas.width;
+    const nearOffset = (elapsedTime * 0.02 * speed) % canvas.width;
+    
+    // Far mountains (slowest moving)
+    ctx.fillStyle = '#37465b';
+    ctx.beginPath();
+    ctx.moveTo(0, groundY - mountainHeight * 0.7);
+    
+    // Generate mountain range
+    for (let x = 0; x < canvas.width + 100; x += 50) {
+      const height = mountainHeight * 0.5 * 
+                    (0.7 + 0.3 * Math.sin((x + farOffset) * 0.01 + 435) + 
+                    0.2 * Math.sin((x + farOffset) * 0.02 + 123));
+      ctx.lineTo(x, groundY - height);
+    }
+    
+    ctx.lineTo(canvas.width, groundY - mountainHeight * 0.3);
+    ctx.lineTo(canvas.width, groundY);
+    ctx.lineTo(0, groundY);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Middle mountains
+    ctx.fillStyle = '#2b3848';
+    ctx.beginPath();
+    ctx.moveTo(0, groundY - mountainHeight * 0.5);
+    
+    for (let x = 0; x < canvas.width + 100; x += 30) {
+      const height = mountainHeight * 0.8 * 
+                    (0.6 + 0.4 * Math.sin((x + midOffset) * 0.015 + 789) + 
+                    0.3 * Math.sin((x + midOffset) * 0.03 + 456));
+      ctx.lineTo(x, groundY - height);
+    }
+    
+    ctx.lineTo(canvas.width, groundY - mountainHeight * 0.4);
+    ctx.lineTo(canvas.width, groundY);
+    ctx.lineTo(0, groundY);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Nearest mountains (fastest moving)
+    ctx.fillStyle = '#1a2530';
+    ctx.beginPath();
+    ctx.moveTo(0, groundY - mountainHeight * 0.3);
+    
+    for (let x = 0; x < canvas.width + 100; x += 20) {
+      const height = mountainHeight * 0.5 * 
+                    (0.5 + 0.3 * Math.sin((x + nearOffset) * 0.025 + 123) + 
+                    0.2 * Math.sin((x + nearOffset) * 0.04 + 456));
+      ctx.lineTo(x, groundY - height);
+    }
+    
+    ctx.lineTo(canvas.width, groundY - mountainHeight * 0.2);
+    ctx.lineTo(canvas.width, groundY);
+    ctx.lineTo(0, groundY);
+    ctx.closePath();
+    ctx.fill();
+  },
+  
+  // Combined background drawing function
+  drawBackground: (ctx, canvas, dayNightCycle, elapsedTime, isPaused = false) => {
+    // Draw sky with proper day/night coloring
+    Background.drawSky(ctx, canvas, dayNightCycle);
+    
+    // Draw stars at night (only during night phase)
+    if (dayNightCycle > 0.75 || dayNightCycle < 0.25) {
+      // Calculate star brightness based on time of day
+      // Brightest at cycle 0 (midnight) and fades at dawn/dusk
+      const starBrightness = dayNightCycle > 0.75 ? 
+        (dayNightCycle - 0.75) * 4 : // Fade in at dusk
+        1 - (dayNightCycle * 4);     // Fade out at dawn
+        
+      Background.drawStars(ctx, canvas, elapsedTime, starBrightness);
+    }
+    
+    // Draw mountains with parallax effect
+    Background.drawMountains(ctx, canvas, elapsedTime, isPaused);
   }
 };
 
@@ -355,48 +535,73 @@ export const UI = {
   
   // Draw game over message
   drawGameOver: (ctx, canvas, score, elapsedTime, newHighScore) => {
-    // Semi-transparent overlay
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    // Semi-transparent overlay for better readability
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Game over text
-    ctx.fillStyle = '#FFF';
+    ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 48px Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Game Over', canvas.width/2, canvas.height/2 - 50);
+    
+    // Add text shadow for better visibility
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+    
+    // Main title with slight animation
+    const textPulse = Math.sin(elapsedTime * 0.003) * 0.1 + 1;
+    ctx.save();
+    ctx.translate(canvas.width/2, canvas.height/2 - 100);
+    ctx.scale(textPulse, textPulse);
+    ctx.fillText('GAME OVER', 0, 0);
+    ctx.restore();
+    
+    // Reset shadow
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
     
     // Score display
     ctx.font = 'bold 32px Arial, sans-serif';
-    ctx.fillText(`Score: ${score}`, canvas.width/2, canvas.height/2 + 10);
+    ctx.fillText(`Score: ${score}`, canvas.width/2, canvas.height/2 - 30);
     
-    // High score with special highlight for new high score
+    // Get current high score
     const highScore = localStorage.getItem('catRunnerHighScore') || 0;
     
+    // High score display - always show with yellow glow
+    ctx.save();
+    
+    ctx.font = 'bold 24px Arial, sans-serif';
+    
     if (newHighScore) {
-      // Draw "New High Score!" text with glow effect
-      ctx.save();
+      // Yellow glow effect
       ctx.shadowColor = '#FFEB3B';
       ctx.shadowBlur = 15;
-      ctx.fillStyle = '#FFEB3B';
-      ctx.font = 'bold 36px Arial, sans-serif';
-      ctx.fillText('New High Score!', canvas.width/2, canvas.height/2 + 60);
-      ctx.restore();
+      ctx.fillStyle = '#FFEB3B'; // Glowing yellow
+      // Show new high score message
+      ctx.fillText(`NEW HIGH SCORE: ${score}`, canvas.width/2, canvas.height/2 + 20);
     } else {
-      // Regular high score display
-      ctx.fillText(`High Score: ${highScore}`, canvas.width/2, canvas.height/2 + 60);
+      // Show current high score
+      
+      ctx.fillText(`High Score: ${highScore}`, canvas.width/2, canvas.height/2 + 20);
     }
     
-    // Restart prompt
-    const alpha = 0.5 + 0.5 * Math.sin(elapsedTime * 0.005);
-    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-    ctx.font = '24px Arial, sans-serif';
-    ctx.fillText('Click or press any key to restart', canvas.width/2, canvas.height/2 + 120);
+    ctx.restore();
     
-    // Store button bounds for click handling
-    const menuButtonY = canvas.height/2 + 180;
+    // Instructions
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.font = '20px Arial, sans-serif';
+    ctx.fillText('Tap or press any key to play again', canvas.width/2, canvas.height/2 + 70);
+    
+    // Draw menu button (canvas-only, no HTML element)
+    const menuButtonY = canvas.height/2 + 130;
     const buttonWidth = 200;
     const buttonHeight = 50;
+    
+    // Store button bounds for click handling
     window.menuButtonBounds = {
       x: canvas.width/2 - buttonWidth/2,
       y: menuButtonY - buttonHeight/2,
@@ -404,8 +609,26 @@ export const UI = {
       height: buttonHeight
     };
     
-    // Draw menu button
-    ctx.fillStyle = '#3F51B5';
+    // Button glow effect
+    const glowAlpha = Math.sin(elapsedTime * 0.004) * 0.3 + 0.7;
+    
+    // Button shadow
+    ctx.shadowColor = `rgba(63, 81, 181, ${glowAlpha * 0.5})`;
+    ctx.shadowBlur = 15;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    
+    // Draw menu button with gradient
+    const buttonGradient = ctx.createLinearGradient(
+      window.menuButtonBounds.x, 
+      window.menuButtonBounds.y, 
+      window.menuButtonBounds.x, 
+      window.menuButtonBounds.y + buttonHeight
+    );
+    buttonGradient.addColorStop(0, '#5C6BC0');
+    buttonGradient.addColorStop(1, '#3F51B5');
+    
+    ctx.fillStyle = buttonGradient;
     ctx.beginPath();
     ctx.roundRect(
       window.menuButtonBounds.x,
@@ -416,9 +639,25 @@ export const UI = {
     );
     ctx.fill();
     
+    // Button border
+    ctx.strokeStyle = '#7986CB';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Button text with shadow for legibility
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+    
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 18px Arial, sans-serif';
+    ctx.font = 'bold 20px Arial, sans-serif';
     ctx.fillText('Return to Menu', canvas.width/2, menuButtonY);
+    
+    // Reset shadow
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
   },
   
   // Draw pause screen

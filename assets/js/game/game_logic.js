@@ -96,15 +96,22 @@ export class GameState {
       this.gameState = 'game_over';
       this.isPlaying = false;
       
-      // Check for high score
+      // Update high score if needed
       const currentHighScore = localStorage.getItem('catRunnerHighScore') || 0;
+      this.newHighScore = false; // Reset this flag to ensure it's false by default
+      
       if (this.score > currentHighScore) {
-        localStorage.setItem('catRunnerHighScore', this.score);
+        // Only set newHighScore to true if we actually beat the high score
         this.newHighScore = true;
-        this.keyPressCount = 0;
+        localStorage.setItem('catRunnerHighScore', this.score);
+        console.log(`New high score: ${this.score}`);
+      } else {
+        console.log(`Score: ${this.score}, High score: ${currentHighScore}`);
       }
       
-      // Create game over menu button
+      // Prepare for restart
+      this.keyPressCount = 0;
+      this.requiredKeyPresses = 1;
       this.createMenuButton();
     }
   }
@@ -471,56 +478,12 @@ export class GameState {
   
   // DOM interaction methods
   createMenuButton() {
-    if (!document.getElementById('menuButton')) {
-      // Create actual HTML button for more reliable click handling
-      const button = document.createElement('button');
-      button.id = 'menuButton';
-      button.innerText = 'Return to Menu';
-      button.style.position = 'absolute';
-      button.style.zIndex = '1000';
-      button.style.top = `${this.canvas.getBoundingClientRect().top + this.canvas.height/2 + 160}px`;
-      button.style.left = '50%';
-      button.style.transform = 'translateX(-50%)';
-      button.style.padding = '10px 30px';
-      button.style.fontSize = '18px';
-      button.style.fontWeight = 'bold';
-      button.style.backgroundColor = '#3F51B5';
-      button.style.color = 'white';
-      button.style.border = 'none';
-      button.style.borderRadius = '5px';
-      button.style.cursor = 'pointer';
-      
-      // Add direct event listener
-      button.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log("Menu button clicked directly");
-        
-        // Use multiple navigation methods for redundancy
-        try {
-          window.location.href = '/';
-        } catch(e) {
-          console.error("Navigation failed, trying alternate method", e);
-          try {
-            document.location.href = '/';
-          } catch(e2) {
-            console.error("Second navigation attempt failed", e2);
-            // Final fallback
-            window.open('/', '_self');
-          }
-        }
-      });
-      
-      // Append to document body
-      document.body.appendChild(button);
-    }
+    // Don't create an actual HTML button - just rely on the canvas button
+    // and its click handler that's already in place
+    console.log("Using canvas-only menu button");
   }
   
   removeMenuButton() {
-    const button = document.getElementById('menuButton');
-    if (button) {
-      button.removeEventListener('click', () => {});
-      document.body.removeChild(button);
-    }
+    // No HTML button to remove
   }
 } 
