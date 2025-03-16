@@ -248,10 +248,13 @@ export class GameState {
   updateObstacles(deltaTime) {
     if (!this.isPaused && this.isPlaying) {
       // Create new obstacles at intervals
-      this.obstacleTimer += deltaTime;
-      if (this.obstacleTimer > 1500) {
-        this.obstacleTimer = 0;
-        this.obstacles.push(ObstacleSystem.create(this.canvas));
+      // Don't spawn new obstacles when time is frozen
+      if (!(this.specialAbilityActive && this.specialAbilityType === 'timeFreezer')) {
+        this.obstacleTimer += deltaTime;
+        if (this.obstacleTimer > 1500) {
+          this.obstacleTimer = 0;
+          this.obstacles.push(ObstacleSystem.create(this.canvas));
+        }
       }
       
       // Update obstacle positions

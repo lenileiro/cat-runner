@@ -925,6 +925,7 @@ export const GameCanvas = {
         case 'ArrowUp':
         case 'w':
         case 'W':
+        case ' ':
           // If in flight mode, move upward
           if (game.specialAbilityActive && game.specialAbilityType === 'flight') {
             game.movingUp = true;
